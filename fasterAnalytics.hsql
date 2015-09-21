@@ -1,0 +1,151 @@
+!echo "**********************************************";
+!echo "*** DEMO: Faster Analytics                 ***";
+!echo "      Tez, ORC, Vectorization and CBO      ***";
+!echo "**********************************************";
+!echo "";
+
+!echo "**********************************************";
+!echo "** 1) Baseline: Regular Query                 ";
+!echo "**********************************************";
+
+set hive.execution.engine=mr;
+
+select e.errors, r.ts, d.devicemake, r.val from
+		(
+  			select ts, count(*) as errors
+  			from logdata_csv
+  			where source = 'ERROR'
+  			group by ts
+		) e right join
+		(
+  			select ts, deviceid, avg(val) val
+  			from sensordata_csv
+  			group by ts, deviceid
+		) r join
+		(
+		  	select deviceid, devicemake
+		    from devicedata_csv
+		) d
+		on e.ts = r.ts
+		and r.deviceid = d.deviceid
+order by r.val desc, e.errors desc
+limit 10
+;
+
+!echo "**********************************************";
+!echo "** 2) Same query using Tez                    ";
+!echo "**********************************************";
+
+set hive.execution.engine=tez;
+
+select e.errors, r.ts, d.devicemake, r.val from
+		(
+  			select ts, count(*) as errors
+  			from logdata_csv
+  			where source = 'ERROR'
+  			group by ts
+		) e right join
+		(
+  			select ts, deviceid, avg(val) val
+  			from sensordata_csv
+  			group by ts, deviceid
+		) r join
+		(
+		  	select deviceid, devicemake
+		    from devicedata_csv
+		) d
+		on e.ts = r.ts
+		and r.deviceid = d.deviceid
+order by r.val desc, e.errors desc
+limit 10
+;
+
+
+!echo "**********************************************";
+!echo "** 3) Same query using ORC format"             ;
+!echo "**********************************************";
+
+select e.errors, r.ts, d.devicemake, r.val from
+		(
+  			select ts, count(*) as errors
+  			from logdata_orc
+  			where source = 'ERROR'
+  			group by ts
+		) e right join
+		(
+  			select ts, deviceid, avg(val) val
+  			from sensordata_part
+  			group by ts, deviceid
+		) r join
+		(
+		  	select deviceid, devicemake
+		    from devicedata_orc
+		) d
+		on e.ts = r.ts
+		and r.deviceid = d.deviceid
+order by r.val desc, e.errors desc
+limit 10
+;
+
+!echo "**********************************************";
+!echo "** 4) Same query with Vectorization           ";
+!echo "**********************************************";
+
+SET hive.vectorized.execution.enabled = true;
+SET hive.vectorized.execution.reduce.enabled=true;
+
+select e.errors, r.ts, d.devicemake, r.val from
+		(
+  			select ts, count(*) as errors
+  			from logdata_orc
+  			where source = 'ERROR'
+  			group by ts
+		) e right join
+		(
+  			select ts, deviceid, avg(val) val
+  			from sensordata_part
+  			group by ts, deviceid
+		) r join
+		(
+		  	select deviceid, devicemake
+		    from devicedata_orc
+		) d
+		on e.ts = r.ts
+		and r.deviceid = d.deviceid
+order by r.val desc, e.errors desc
+limit 10
+;
+
+!echo "**********************************************";
+!echo "** 5) Same query using CBO	             ";
+!echo "**********************************************";
+
+SET hive.cbo.enable = true;
+ANALYZE TABLE logdata_orc COMPUTE STATISTICS;
+ANALYZE TABLE logdata_orc COMPUTE STATISTICS FOR COLUMNS;
+ANALYZE TABLE sensordata_part PARTITION (ts) COMPUTE STATISTICS;
+ANALYZE TABLE sensordata_part PARTITION (ts) COMPUTE STATISTICS FOR COLUMNS;
+ANALYZE TABLE devicedata_orc COMPUTE STATISTICS;
+ANALYZE TABLE devicedata_orc COMPUTE STATISTICS FOR COLUMNS;
+
+select e.errors, r.ts, d.devicemake, r.val from
+		(
+  			select ts, count(*) as errors
+  			from logdata_orc
+  			where source = 'ERROR'
+  			group by ts
+		) e right join
+		(
+  			select ts, deviceid, avg(val) val
+  			from sensordata_part
+  			group by ts, deviceid
+		) r join
+		(
+		  	select deviceid, devicemake
+		    from devicedata_orc
+		) d
+		on e.ts = r.ts
+		and r.deviceid = d.deviceid
+order by r.val desc, e.errors desc
+limit 10
+;

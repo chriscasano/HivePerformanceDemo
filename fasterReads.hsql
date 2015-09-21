@@ -1,0 +1,30 @@
+!echo "**********************************************";
+!echo "*** DEMO: Faster Query Reads w/ Hive       ***"; 
+!echo "**********************************************";
+!echo "";
+
+!echo "**********************************************";
+!echo "** 1) Baseline: Read a csv without Tez";
+!echo "    set hive.execution.engine=mr";
+!echo "    select count(*) from sensordata_csv where ts = '2014-01-01'";
+!echo "**********************************************";
+
+set hive.execution.engine=mr;
+select count(*) from sensordata_csv where ts = '2014-01-01';
+
+!echo "**********************************************";
+!echo "** 2) Read a csv with Tez";
+!echo "     set hive.execution.engine=tez";
+!echo "     select count(*) from sensordata_csv where ts = '2014-01-01'";
+!echo "**********************************************";
+
+set hive.execution.engine=tez;
+select count(*) from sensordata_csv where ts = '2014-01-01';
+
+!echo "**********************************************";
+!echo "** 3) Read a partition with Tez";
+!echo "     select count(*) from sensordata_part where ts = '2014-01-01'";
+!echo "**********************************************";
+
+select count(*) from sensordata_part where ts = '2014-01-01';
+

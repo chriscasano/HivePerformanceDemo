@@ -1,0 +1,110 @@
+-- -----------------
+--  Log Data
+-- -----------------
+drop table logdata_csv;
+
+create external table logdata_csv
+(
+ts string,
+event int,
+source string,
+message string
+)
+row format delimited
+fields terminated by '|'
+stored as textfile
+location '/user/admin/MachineData/logdata'
+;
+
+
+drop table logdata_orc;
+
+create table logdata_orc
+(
+ts string,
+event int,
+source string,
+message string
+)
+stored as orc;
+
+insert into table logdata_orc select ts, event, source, message from logdata_csv;
+
+-- -------------
+-- Device Data
+-- -------------
+
+drop table devicedata_csv;
+
+create external table devicedata_csv
+(
+deviceId int,
+deviceName string,
+deviceMake string,
+deviceLocation string,
+deviceDaysInService int
+)
+row format delimited
+fields terminated by '|'
+stored as textfile
+location '/user/admin/MachineData/devicedata'
+;
+
+
+drop table devicedata_orc;
+
+create table devicedata_orc
+(
+deviceId int,
+deviceName string,
+deviceMake string,
+deviceLocation string,
+deviceDaysInService int
+)
+stored as orc;
+
+insert into table devicedata_orc select deviceId, deviceName, deviceMake, deviceLocation, deviceDaysInService from devicedata_csv;
+
+-- -------------
+-- Sensor Data
+-- -------------
+
+drop table sensordata_csv;
+
+create external table sensordata_csv
+(
+ts string,
+deviceid int,
+sensorid int,
+val double
+)
+row format delimited
+fields terminated by '|'
+stored as textfile
+location '/user/admin/MachineData/sensordata'
+;
+
+drop table sensordata_part;
+
+create table sensordata_part
+(
+deviceid int,
+sensorid int,
+val double
+)
+partitioned by (ts string)
+clustered by (deviceid) sorted by (deviceid) into 10 buckets
+stored as orc
+;
+
+set hive.enforce.bucketing = true;
+
+from sensordata_csv insert overwrite table sensordata_part partition(ts="2014-01-01") select deviceid, sensorid, val where ts ='2014-01-01';
+from sensordata_csv insert overwrite table sensordata_part partition(ts="2014-01-02") select deviceid, sensorid, val where ts ='2014-01-02';
+from sensordata_csv insert overwrite table sensordata_part partition(ts="2014-01-03") select deviceid, sensorid, val where ts ='2014-01-03';
+from sensordata_csv insert overwrite table sensordata_part partition(ts="2014-01-04") select deviceid, sensorid, val where ts ='2014-01-04';
+from sensordata_csv insert overwrite table sensordata_part partition(ts="2014-01-05") select deviceid, sensorid, val where ts ='2014-01-05';
+from sensordata_csv insert overwrite table sensordata_part partition(ts="2014-01-06") select deviceid, sensorid, val where ts ='2014-01-06';
+from sensordata_csv insert overwrite table sensordata_part partition(ts="2014-01-07") select deviceid, sensorid, val where ts ='2014-01-07';
+
+set hive.enforce.bucketing = false;

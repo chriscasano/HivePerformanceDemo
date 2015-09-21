@@ -1,0 +1,45 @@
+!echo "**********************************************";
+!echo "*** DEMO: Faster Joins                     ***";
+!echo "**********************************************";
+!echo "";
+!echo "**********************************************";
+!echo "** 1) Baseline: Join readings with devices    ";
+!echo "**********************************************";
+
+set hive.optimize.bucketmapjoins=true;
+set hive.execution.engine=tez;
+
+select d.deviceid, s.deviceid
+from devicedata_csv d 
+	right join sensordata_csv s 
+	on d.deviceid = s.deviceid
+limit 10
+;
+
+!echo "**********************************************";
+!echo "** 2) Same join using ORC and deviceid buckets";
+!echo "**********************************************";
+
+select d.deviceid, s.deviceid
+from devicedata_orc d 
+	right join sensordata_part s 
+	on d.deviceid = s.deviceid
+limit 10;
+
+
+!echo "**********************************************";
+!echo "** 3) Same join as #2 with Vectorization      ";
+!echo "**********************************************";
+
+SET hive.vectorized.execution.enabled=true;
+SET hive.vectorized.execution.reduce.enabled=true;
+
+select d.deviceid, s.deviceid
+from devicedata_orc d 
+	right join sensordata_part s 
+	on d.deviceid = s.deviceid
+limit 10;
+
+
+SET hive.vectorized.execution.enabled=false;
+SET hive.vectorized.execution.reduce.enabled=false;
